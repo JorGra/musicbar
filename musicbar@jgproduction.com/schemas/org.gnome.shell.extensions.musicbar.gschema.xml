@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.musicbar" path="/org/gnome/shell/extensions/musicbar/">
+    <key name="panel-position" type="s">
+      <choices>
+        <choice value="left"/>
+        <choice value="center"/>
+        <choice value="right"/>
+      </choices>
+      <default>'right'</default>
+      <summary>Panel box the controls are placed in</summary>
+    </key>
+    <key name="panel-index" type="i">
+      <default>0</default>
+      <summary>Position inside the panel box</summary>
+    </key>
+    <key name="tint-panel" type="b">
+      <default>false</default>
+      <summary>Tint the panel controls with the cover art color</summary>
+    </key>
+    <key name="show-progress" type="b">
+      <default>true</default>
+      <summary>Show playback progress as an outline around the panel controls</summary>
+    </key>
+    <key name="open-delay" type="i">
+      <default>150</default>
+      <summary>Delay in milliseconds before the popup opens on hover</summary>
+    </key>
+    <key name="close-delay" type="i">
+      <default>350</default>
+      <summary>Delay in milliseconds before the popup closes after the pointer leaves</summary>
+    </key>
+    <key name="spotify-only" type="b">
+      <default>false</default>
+      <summary>Only follow Spotify, ignore other MPRIS players</summary>
+    </key>
+    <key name="scroll-action" type="s">
+      <choices>
+        <choice value="none"/>
+        <choice value="track"/>
+        <choice value="seek"/>
+      </choices>
+      <default>'track'</default>
+      <summary>What scrolling over the panel controls does</summary>
+    </key>
+    <key name="tint-popup" type="b">
+      <default>true</default>
+      <summary>Color the popup with the cover art color</summary>
+    </key>
+    <key name="popup-opacity" type="i">
+      <range min="30" max="100"/>
+      <default>80</default>
+      <summary>Popup background opacity in percent</summary>
+    </key>
+    <key name="show-details" type="b">
+      <default>true</default>
+      <summary>Show genre and release year in the popup</summary>
+      <description>Taken from the player when it provides them, otherwise looked up on MusicBrainz.</description>
+    </key>
+    <key name="open-animation" type="s">
+      <choices>
+        <choice value="none"/>
+        <choice value="fade"/>
+        <choice value="cascade"/>
+        <choice value="spring"/>
+        <choice value="sweep"/>
+        <choice value="zoom"/>
+      </choices>
+      <default>'cascade'</default>
+      <summary>Animation used when the popup opens</summary>
+    </key>
+    <key name="spotify-integration" type="b">
+      <default>false</default>
+      <summary>Enable Spotify account features</summary>
+      <description>Show like and add-to-playlist buttons. Requires connecting a Spotify developer app.</description>
+    </key>
+    <key name="spotify-client-id" type="s">
+      <default>''</default>
+      <summary>Client ID of the user's Spotify developer app</summary>
+    </key>
+    <key name="spotify-refresh-token" type="s">
+      <default>''</default>
+      <summary>Spotify OAuth refresh token</summary>
+    </key>
+    <key name="spotify-user" type="s">
+      <default>''</default>
+      <summary>Display name of the connected Spotify account</summary>
+    </key>
+  </schema>
+</schemalist>

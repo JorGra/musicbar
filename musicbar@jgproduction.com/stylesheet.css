@@ -1,0 +1,384 @@
+/* ---- Panel ------------------------------------------------------------ */
+
+/* The indicator itself stays flat; feedback happens per button. */
+#panel .panel-button.musicbar-indicator,
+#panel .panel-button.musicbar-indicator:hover,
+#panel .panel-button.musicbar-indicator:focus,
+#panel .panel-button.musicbar-indicator:active,
+#panel .panel-button.musicbar-indicator:checked {
+  box-shadow: none;
+  background-color: transparent;
+  border-width: 0;
+  padding: 0;
+  -natural-hpadding: 3px;
+  -minimum-hpadding: 3px;
+}
+
+.musicbar-pill {
+  border-radius: 999px;
+  padding: 2px 3px;
+}
+
+.musicbar-pill-ring {
+  -ring-width: 1.25px;
+  -ring-track-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.musicbar-pill-row {
+  spacing: 0;
+}
+
+.musicbar-pill-button {
+  min-width: 32px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  background-color: transparent;
+  transition-duration: 140ms;
+}
+
+.musicbar-pill-button:hover,
+.musicbar-pill-button:focus {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+.musicbar-pill-button:active {
+  background-color: rgba(255, 255, 255, 0.32);
+}
+
+.musicbar-pill-button:insensitive {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.musicbar-pill-icon {
+  icon-size: 16px;
+}
+
+/* ---- Popup ------------------------------------------------------------ */
+
+.musicbar-popup {
+  /* Room for the shadow, which is drawn around (never under) the popup. */
+  margin: 24px;
+  padding: 12px 12px 16px 12px;
+  border-radius: 26px;
+  color: #ffffff;
+  background-gradient-direction: vertical;
+  background-gradient-start: #2b2f36;
+  background-gradient-end: #111316;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  transition-duration: 600ms;
+}
+
+.musicbar-popup-shadow {
+  -shadow-blur: 14px;
+  -shadow-offset: 2px;
+  color: rgba(0, 0, 0, 0.12);
+}
+
+.musicbar-cover {
+  width: 304px;
+  height: 304px;
+  border-radius: 16px;
+  background-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  transition-duration: 140ms;
+}
+
+.musicbar-cover-image {
+  border-radius: 16px;
+  background-size: cover;
+  background-position: center;
+}
+
+.musicbar-cover-placeholder {
+  icon-size: 96px;
+  color: rgba(255, 255, 255, 0.22);
+}
+
+.musicbar-info {
+  margin: 14px 2px 0 4px;
+  spacing: 6px;
+}
+
+.musicbar-info-text {
+  spacing: 2px;
+}
+
+.musicbar-actions {
+  spacing: 2px;
+}
+
+.musicbar-action {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.6);
+  transition-duration: 140ms;
+}
+
+.musicbar-action StIcon {
+  icon-size: 18px;
+}
+
+.musicbar-action:hover,
+.musicbar-action:focus {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.musicbar-action:active,
+.musicbar-action:checked {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.musicbar-action:insensitive {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.musicbar-title {
+  font-size: 14pt;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.musicbar-artist {
+  font-size: 10.5pt;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.musicbar-meta {
+  margin-top: 1px;
+  font-size: 9pt;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.musicbar-progress {
+  margin: 10px 0 0 0;
+  spacing: 2px;
+}
+
+.slider.musicbar-slider {
+  height: 16px;
+  -barlevel-height: 5px;
+  -barlevel-background-color: rgba(255, 255, 255, 0.16);
+  -barlevel-active-background-color: #ffffff;
+  -slider-handle-radius: 6px;
+  color: #ffffff;
+}
+
+.musicbar-times {
+  padding: 0 2px;
+}
+
+.musicbar-time {
+  font-size: 8.5pt;
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.musicbar-time-button {
+  padding: 0;
+  border-radius: 4px;
+}
+
+.musicbar-time-button:hover .musicbar-time {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.musicbar-controls {
+  margin-top: 2px;
+}
+
+.musicbar-controls-side {
+  spacing: 2px;
+}
+
+.musicbar-control {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.92);
+  background-color: transparent;
+  icon-size: 22px;
+  transition-duration: 140ms;
+}
+
+.musicbar-control StIcon {
+  icon-size: 22px;
+}
+
+.musicbar-control:hover,
+.musicbar-control:focus {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.musicbar-control:active {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+.musicbar-control:insensitive {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.musicbar-control.small {
+  width: 34px;
+  height: 34px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.musicbar-control.small StIcon {
+  icon-size: 16px;
+}
+
+.musicbar-control.small StIcon.musicbar-sparkle {
+  icon-size: 7px;
+}
+
+.musicbar-control.small:checked {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.musicbar-control.musicbar-play {
+  width: 56px;
+  height: 56px;
+  margin: 0 2px;
+  background-color: #ffffff;
+  color: #111111;
+}
+
+.musicbar-control.musicbar-play StIcon {
+  icon-size: 26px;
+}
+
+/* ---- Volume (folds out below the controls) ---------------------------- */
+
+.musicbar-volume {
+  padding: 4px 0 2px 0;
+  spacing: 8px;
+}
+
+.slider.musicbar-volume-slider {
+  -barlevel-height: 3px;
+  -barlevel-background-color: rgba(255, 255, 255, 0.14);
+  -barlevel-active-background-color: rgba(255, 255, 255, 0.85);
+  -slider-handle-radius: 5px;
+  color: #ffffff;
+}
+
+.musicbar-volume-label {
+  min-width: 36px;
+  font-size: 8.5pt;
+  font-feature-settings: "tnum";
+  text-align: right;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ---- Playlist sheet (overlays the cover) ------------------------------ */
+
+.musicbar-sheet {
+  border-radius: 16px;
+  padding: 10px 6px 6px 6px;
+  spacing: 6px;
+  background-color: rgba(12, 13, 15, 0.86);
+}
+
+.musicbar-sheet-header {
+  padding: 0 0 0 10px;
+}
+
+.musicbar-sheet-title {
+  font-size: 11pt;
+  font-weight: 800;
+}
+
+.musicbar-sheet-list {
+  padding-right: 8px;
+  spacing: 2px;
+}
+
+.musicbar-sheet-row {
+  padding: 5px 8px;
+  border-radius: 10px;
+  transition-duration: 120ms;
+}
+
+.musicbar-sheet-row:hover,
+.musicbar-sheet-row:focus {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.musicbar-sheet-row:active {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+.musicbar-sheet-row-box {
+  spacing: 10px;
+}
+
+.musicbar-sheet-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.08);
+  background-size: cover;
+}
+
+.musicbar-sheet-thumb StIcon {
+  icon-size: 16px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.musicbar-sheet-name {
+  font-size: 10pt;
+  font-weight: 700;
+}
+
+.musicbar-sheet-count {
+  font-size: 8.5pt;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.musicbar-sheet-message {
+  padding: 0 18px;
+  spacing: 12px;
+}
+
+.musicbar-sheet-message-label {
+  font-size: 10pt;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.musicbar-sheet-message StIcon {
+  icon-size: 32px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.musicbar-sheet-button {
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+.musicbar-sheet-button:hover,
+.musicbar-sheet-button:focus {
+  background-color: rgba(255, 255, 255, 0.24);
+}
+
+.musicbar-toast {
+  margin-bottom: 10px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 9pt;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: rgba(12, 13, 15, 0.86);
+}
