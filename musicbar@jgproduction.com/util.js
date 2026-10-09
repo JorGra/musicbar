@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Clutter from 'gi://Clutter';
+import Cogl from 'gi://Cogl';
+import GObject from 'gi://GObject';
+import Shell from 'gi://Shell';
 
 /** Gently grow `target` while `hoverSource` is hovered, shrink a bit while pressed. */
 export function addHoverScale(target, hoverSource, scale = 1.08) {
@@ -29,4 +32,46 @@ export function formatTime(us) {
     const m = Math.floor((total % 3600) / 60);
     const s = String(total % 60).padStart(2, '0');
     return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+}
+
+/**
+ * Define an offscreen effect that runs a GLSL fragment snippet with float
+ * uniforms, set through `setUniforms({name: value})`. GNOME Shell 51 replaced
+ * Shell.GLSLEffect with snippet-based Clutter.ShaderEffects, so this picks
+ * whichever the running version has.
+ */
+export function defineShaderEffect(name, declarations, code) {
+    const GTypeName = `MusicBar${name}`;
+    if (Shell.GLSLEffect) {
+        class GLSLShaderEffect extends Shell.GLSLEffect {
+            vfunc_build_pipeline() {
+                this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT, declarations, code, false);
+            }
+
+            setUniforms(values) {
+                for (const [uniform, value] of Object.entries(values))
+                    this.set_uniform_float(this.get_uniform_location(uniform), 1, [value]);
+                this.queue_repaint();
+            }
+        }
+        return GObject.registerClass({GTypeName}, GLSLShaderEffect);
+    }
+
+    class SnippetShaderEffect extends Clutter.ShaderEffect {
+        vfunc_get_static_snippet() {
+            return Cogl.Snippet.new(Cogl.SnippetHook.FRAGMENT, declarations, code);
+        }
+
+        setUniforms(values) {
+            // Whole numbers would arrive as ints, which don't set float uniforms.
+            for (const [uniform, value] of Object.entries(values)) {
+                const gvalue = new GObject.Value();
+                gvalue.init(GObject.TYPE_DOUBLE);
+                gvalue.set_double(value);
+                this.set_uniform_value(uniform, gvalue);
+            }
+            this.queue_repaint();
+        }
+    }
+    return GObject.registerClass({GTypeName}, SnippetShaderEffect);
 }

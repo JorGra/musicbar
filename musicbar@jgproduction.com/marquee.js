@@ -2,13 +2,13 @@
 // A one-line label that scrolls its text when it doesn't fit.
 
 import Clutter from 'gi://Clutter';
-import Cogl from 'gi://Cogl';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
 import Pango from 'gi://Pango';
-import Shell from 'gi://Shell';
 import St from 'gi://St';
+
+import {defineShaderEffect} from './util.js';
 
 // Pixels per second.
 const SPEED = 30;
@@ -33,42 +33,8 @@ if (fade_right > 0.0)
 cogl_color_out *= alpha;
 `;
 
-/**
- * Fades the left and right edges of an actor; widths are fractions of its
- * width. GNOME Shell 51 replaced Shell.GLSLEffect with snippet-based
- * Clutter.ShaderEffects, so pick whichever this version has.
- */
-const EdgeFadeEffect = Shell.GLSLEffect
-    ? GObject.registerClass(
-    class EdgeFadeEffect extends Shell.GLSLEffect {
-        _init() {
-            super._init();
-            this._leftLocation = this.get_uniform_location('fade_left');
-            this._rightLocation = this.get_uniform_location('fade_right');
-        }
-
-        vfunc_build_pipeline() {
-            this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT, FADE_DECLARATIONS, FADE_CODE, false);
-        }
-
-        setEdges(left, right) {
-            this.set_uniform_float(this._leftLocation, 1, [left]);
-            this.set_uniform_float(this._rightLocation, 1, [right]);
-            this.queue_repaint();
-        }
-    })
-    : GObject.registerClass(
-    class EdgeFadeEffect extends Clutter.ShaderEffect {
-        vfunc_get_static_snippet() {
-            return Cogl.Snippet.new(Cogl.SnippetHook.FRAGMENT, FADE_DECLARATIONS, FADE_CODE);
-        }
-
-        setEdges(left, right) {
-            this.set_uniform_value('fade_left', left);
-            this.set_uniform_value('fade_right', right);
-            this.queue_repaint();
-        }
-    });
+/** Fades the left and right edges of an actor; widths are fractions of its width. */
+const EdgeFadeEffect = defineShaderEffect('EdgeFadeEffect', FADE_DECLARATIONS, FADE_CODE);
 
 /** Whether moving text is welcome: animations on, no reduced motion (GNOME 51+). */
 function motionAllowed() {
@@ -203,7 +169,7 @@ class MarqueeLabel extends St.Widget {
         // the text is crisp during the pause.
         const offset = -this._label.translation_x;
         const left = Math.clamp(Math.min(offset, this._textWidth + GAP - offset), 0, FADE);
-        this._fade.setEdges(left / width, FADE / width);
+        this._fade.setUniforms({fade_left: left / width, fade_right: FADE / width});
     }
 
     _stop() {
