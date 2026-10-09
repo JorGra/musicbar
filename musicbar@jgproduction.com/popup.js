@@ -102,6 +102,52 @@ class ControlsLayout extends Clutter.LayoutManager {
     }
 });
 
+/**
+ * Shows the top `reveal` fraction of its child. The child keeps its natural
+ * height and the visible part snaps to whole pixels, so folding it open or
+ * closed slides the edge instead of squeezing the content.
+ */
+const FoldOut = GObject.registerClass({
+    Properties: {
+        'reveal': GObject.ParamSpec.double('reveal', null, null,
+            GObject.ParamFlags.READWRITE, 0, 1, 1),
+    },
+}, class FoldOut extends St.Widget {
+    _init(child, params) {
+        super._init({...params, clip_to_allocation: true});
+        this._reveal = 1;
+        this.add_child(child);
+    }
+
+    get reveal() {
+        return this._reveal;
+    }
+
+    set reveal(value) {
+        if (value === this._reveal)
+            return;
+        this._reveal = value;
+        this.notify('reveal');
+        this.queue_relayout();
+    }
+
+    vfunc_get_preferred_width(_forHeight) {
+        return this.first_child.get_preferred_width(-1);
+    }
+
+    vfunc_get_preferred_height(forWidth) {
+        const [min, natural] = this.first_child.get_preferred_height(forWidth);
+        return [Math.round(min * this._reveal), Math.round(natural * this._reveal)];
+    }
+
+    vfunc_allocate(box) {
+        this.set_allocation(box);
+        const width = box.get_width();
+        const [, height] = this.first_child.get_preferred_height(width);
+        this.first_child.allocate(Clutter.ActorBox.new(0, 0, width, height));
+    }
+});
+
 export const MusicBarPopup = GObject.registerClass({
     Signals: {'drag-changed': {}, 'hover-changed': {}},
 }, class MusicBarPopup extends St.Widget {
@@ -453,13 +499,9 @@ export const MusicBarPopup = GObject.registerClass({
     }
 
     _buildVolume() {
-        this._volumeRow = new St.BoxLayout({
-            style_class: 'musicbar-volume',
-            clip_to_allocation: true,
-            visible: false,
-            opacity: 0,
-        });
-        this._box.add_child(this._volumeRow);
+        this._volumeRow = new St.BoxLayout({style_class: 'musicbar-volume'});
+        this._volumeFold = new FoldOut(this._volumeRow, {visible: false, opacity: 0});
+        this._box.add_child(this._volumeFold);
 
         this._muteButton = new St.Button({
             style_class: 'musicbar-action',
@@ -742,8 +784,8 @@ export const MusicBarPopup = GObject.registerClass({
 
     /** Fold the volume row open below the controls, or away again. */
     _setVolumeOpen(open, animate = true) {
-        const row = this._volumeRow;
-        if (open === this._volumeOpen && (animate || !row.get_transition('height')))
+        const fold = this._volumeFold;
+        if (open === this._volumeOpen && (animate || !fold.get_transition('reveal')))
             return;
         this._volumeOpen = open;
         if (open)
@@ -751,37 +793,26 @@ export const MusicBarPopup = GObject.registerClass({
         else
             this._volumeButton.remove_style_pseudo_class('checked');
 
-        row.remove_all_transitions();
+        fold.remove_all_transitions();
         if (!animate) {
-            row.set({visible: open, opacity: open ? 255 : 0, height: -1});
+            fold.set({visible: open, opacity: open ? 255 : 0, reveal: open ? 1 : 0});
             return;
         }
-        if (open) {
-            const [, natural] = row.get_preferred_height(this._box.get_theme_node()
-                .get_content_box(this._box.get_allocation_box()).get_width());
-            row.set({visible: true, height: 0, opacity: 0});
-            row.ease({
-                height: natural,
-                opacity: 255,
-                duration: VOLUME_TOGGLE_TIME,
-                mode: Mode.EASE_OUT_CUBIC,
-                onStopped: isFinished => {
-                    if (isFinished)
-                        row.height = -1;
-                },
-            });
-        } else {
-            row.ease({
-                height: 0,
-                opacity: 0,
-                duration: VOLUME_TOGGLE_TIME,
-                mode: Mode.EASE_IN_OUT_QUAD,
-                onStopped: isFinished => {
-                    if (isFinished)
-                        row.set({visible: false, height: -1});
-                },
-            });
-        }
+        if (open)
+            fold.set({visible: true, reveal: 0, opacity: 0});
+        fold.ease_property('reveal', open ? 1 : 0, {
+            duration: VOLUME_TOGGLE_TIME,
+            mode: open ? Mode.EASE_OUT_CUBIC : Mode.EASE_IN_OUT_QUAD,
+            onStopped: isFinished => {
+                if (isFinished && !open)
+                    fold.visible = false;
+            },
+        });
+        fold.ease({
+            opacity: open ? 255 : 0,
+            duration: VOLUME_TOGGLE_TIME,
+            mode: open ? Mode.EASE_OUT_CUBIC : Mode.EASE_IN_OUT_QUAD,
+        });
     }
 
     /** Soft shadow around the card, clipped so it never darkens the card itself. */
