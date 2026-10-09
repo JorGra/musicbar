@@ -39,6 +39,7 @@ export default class MusicBarExtension extends Extension {
             iconsDir: GLib.build_filenamev([this.path, 'icons']),
         });
         Main.layoutManager.addTopChrome(this._popup);
+        this._popup.connect('destroy', actor => this._onActorDestroyed(actor));
         this._popup.connect('hover-changed', () => this._syncHover());
         this._popup.connect('drag-changed', () => this._syncHover());
 
@@ -46,7 +47,7 @@ export default class MusicBarExtension extends Extension {
         this._settingsIds = ['panel-position', 'panel-index'].map(key =>
             this._settings.connect(`changed::${key}`, () => this._createIndicator()));
 
-        this._overviewId = Main.overview.connect('showing', () => this._popup.close());
+        this._overviewId = Main.overview.connect('showing', () => this._popup?.close());
 
         this._manager.start();
     }
@@ -63,9 +64,11 @@ export default class MusicBarExtension extends Extension {
         this._indicator?.destroy();
         this._indicator = null;
 
-        Main.layoutManager.removeChrome(this._popup);
-        this._popup.destroy();
-        this._popup = null;
+        if (this._popup) {
+            Main.layoutManager.removeChrome(this._popup);
+            this._popup.destroy();
+            this._popup = null;
+        }
 
         this._manager.destroy();
         this._manager = null;
@@ -79,9 +82,12 @@ export default class MusicBarExtension extends Extension {
     }
 
     _createIndicator() {
-        this._indicator?.destroy();
+        const old = this._indicator;
+        this._indicator = null;
+        old?.destroy();
 
         this._indicator = new MusicBarIndicator(this._manager, this._settings);
+        this._indicator.connect('destroy', actor => this._onActorDestroyed(actor));
         this._indicator.connect('notify::hover', () => this._syncHover());
         this._indicator.setPalette(this._palette ?? DEFAULT_PALETTE);
 
@@ -90,15 +96,33 @@ export default class MusicBarExtension extends Extension {
             this._settings.get_string('panel-position'));
     }
 
+    /**
+     * The shell destroys the panel and chrome itself when it shuts down,
+     * without disabling extensions first. Stop touching them from then on.
+     */
+    _onActorDestroyed(actor) {
+        if (actor === this._indicator)
+            this._indicator = null;
+        else if (actor === this._popup)
+            this._popup = null;
+        else
+            return;
+        this._clearTimeout('_openId');
+        this._clearTimeout('_closeId');
+        this._clearTimeout('_tickId');
+    }
+
     // ---- player state ----------------------------------------------------
 
     _onActiveChanged() {
         if (!this._manager.active)
-            this._popup.close();
+            this._popup?.close();
         this._sync();
     }
 
     _sync() {
+        if (!this._indicator || !this._popup)
+            return;
         this._indicator.sync();
         if (this._popup.isOpen)
             this._popup.sync();
@@ -107,6 +131,8 @@ export default class MusicBarExtension extends Extension {
     }
 
     _updateProgress() {
+        if (!this._indicator || !this._popup)
+            return;
         this._indicator.updateProgress();
         if (this._popup.isOpen)
             this._popup.updateProgress();
@@ -151,7 +177,7 @@ export default class MusicBarExtension extends Extension {
                 this._artUrl = null; // retry on the next update
             }
         }
-        if (cancellable.is_cancelled() || !this._popup)
+        if (cancellable.is_cancelled() || !this._popup || !this._indicator)
             return;
 
         this._palette = result?.palette ?? DEFAULT_PALETTE;
