@@ -16,7 +16,7 @@ import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
 import {DEFAULT_PALETTE, rgba} from './art.js';
 import {MarqueeLabel} from './marquee.js';
 import {trackUriFromMpris} from './spotify.js';
-import {addHoverScale, defineShaderEffect, formatTime} from './util.js';
+import {addHoverScale, formatTime} from './util.js';
 
 const GAP = 8;
 const MARGIN = 8;
@@ -27,7 +27,6 @@ const SEEK_DEBOUNCE = 180;
 const SHEET_FADE_TIME = 160;
 const TOAST_TIME = 1800;
 const VOLUME_TOGGLE_TIME = 200;
-const BLUR_RADIUS = 32;
 
 const Mode = Clutter.AnimationMode;
 
@@ -57,78 +56,6 @@ const ANIMATIONS = {
         items: {scale: 0.6, stagger: 26, duration: 420, mode: Mode.EASE_OUT_BACK},
     },
 };
-
-// Cuts an actor down to a rounded rectangle with antialiased corners.
-const CORNERS_DECLARATIONS = `
-uniform float width;
-uniform float height;
-uniform float radius;
-`;
-const CORNERS_CODE = `
-vec2 size = vec2(width, height);
-vec2 q = abs(cogl_tex_coord_in[0].xy * size - 0.5 * size) - (0.5 * size - radius);
-float d = length(max(q, 0.0)) - radius;
-cogl_color_out *= clamp(0.5 - d, 0.0, 1.0);
-`;
-const RoundedCornersEffect = defineShaderEffect('RoundedCornersEffect',
-    CORNERS_DECLARATIONS, CORNERS_CODE);
-
-/**
- * Blurred view of the windows behind the card. Shell.BlurEffect's background
- * mode can't round its corners, so this blurs a clone of the window group,
- * lined up with the screen, and rounds it before blurring.
- */
-const Backdrop = GObject.registerClass(
-class Backdrop extends Clutter.Actor {
-    _init(card) {
-        super._init({x_expand: true, y_expand: true, clip_to_allocation: true});
-        this._card = card;
-        this._clone = new Clutter.Clone({source: global.window_group});
-        this.add_child(this._clone);
-
-        // The blur has to come first: it can't render inside another
-        // offscreen effect. It then blurs the already rounded clone.
-        this.add_effect(new Shell.BlurEffect({
-            mode: Shell.BlurMode.ACTOR,
-            radius: BLUR_RADIUS,
-        }));
-        this._corners = new RoundedCornersEffect();
-        this.add_effect(this._corners);
-    }
-
-    // The screen-sized clone must not make the popup any bigger.
-    vfunc_get_preferred_width(_forHeight) {
-        return [0, 0];
-    }
-
-    vfunc_get_preferred_height(_forWidth) {
-        return [0, 0];
-    }
-
-    vfunc_allocate(box) {
-        // Cover just the card; its margins leave room for the shadow.
-        const card = this._card;
-        const x1 = box.x1 + card.margin_left;
-        const y1 = box.y1 + card.margin_top;
-        const width = box.get_width() - card.margin_left - card.margin_right;
-        const height = box.get_height() - card.margin_top - card.margin_bottom;
-        this.set_allocation(Clutter.ActorBox.new(x1, y1, x1 + width, y1 + height));
-
-        // Line the clone up with the screen. The window group has no size of
-        // its own; it spans the stage.
-        const origin = this.get_parent().allocation;
-        const [stageWidth, stageHeight] = global.stage.get_size();
-        const x = -(origin.x1 + x1);
-        const y = -(origin.y1 + y1);
-        this._clone.allocate(Clutter.ActorBox.new(x, y, x + stageWidth, y + stageHeight));
-
-        this._corners.setUniforms({
-            width,
-            height,
-            radius: card.get_theme_node().get_border_radius(St.Corner.TOPLEFT),
-        });
-    }
-});
 
 /** The card itself; always exactly as wide as the cover, whatever the title length. */
 const PopupBox = GObject.registerClass(
@@ -204,16 +131,12 @@ export const MusicBarPopup = GObject.registerClass({
             clip_to_allocation: true,
         });
         this._box.connect('notify::hover', () => this.emit('hover-changed'));
-        this._box.connect('style-changed', () => {
-            this._shadow.queue_repaint();
-            this._backdrop.queue_relayout();
-        });
+        this._box.connect('style-changed', () => this._shadow.queue_repaint());
         // Above a bottom panel the card grows upwards (volume row), so re-anchor.
         this._box.connect('notify::height', () => {
             if (this._isOpen && !this._below && this._anchor)
                 this._place(this._anchor);
         });
-        this._buildBackdrop();
         this.add_child(this._box);
 
         this._manager = manager;
@@ -265,7 +188,6 @@ export const MusicBarPopup = GObject.registerClass({
         this._settingsIds = [
             settings.connect('changed::tint-popup', () => this.setPalette(this._palette)),
             settings.connect('changed::popup-opacity', () => this.setPalette(this._palette)),
-            settings.connect('changed::popup-blur', () => this._syncBlur()),
             settings.connect('changed::show-details', () => {
                 this._detailsKey = null;
                 if (this._isOpen)
@@ -292,7 +214,6 @@ export const MusicBarPopup = GObject.registerClass({
         });
 
         this.setPalette(DEFAULT_PALETTE);
-        this._syncBlur();
     }
 
     get isOpen() {
@@ -863,18 +784,7 @@ export const MusicBarPopup = GObject.registerClass({
         }
     }
 
-    _buildBackdrop() {
-        this._backdrop = new Backdrop(this._box);
-        // The clone sits in popup coordinates, so it has to follow the popup.
-        for (const prop of ['fixed-x', 'fixed-y'])
-            this.connect(`notify::${prop}`, () => this._backdrop.queue_relayout());
-        this.add_child(this._backdrop);
-    }
-
-    _syncBlur() {
-        this._backdrop.visible = this._settings.get_boolean('popup-blur');
-    }
-
+    /** Soft shadow around the card, clipped so it never darkens the card itself. */
     _drawShadow(area) {
         const cr = area.get_context();
         const [width, height] = area.get_surface_size();

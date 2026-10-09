@@ -34,7 +34,6 @@ the current cover art. Works with Spotify and any other MPRIS player.
 - Shuffle, previous, play/pause, next and repeat (off / playlist / track).
 - A volume button that folds out a slider with mute.
 - The background gradient and accent color follow the cover.
-- The windows behind the popup are blurred (can be turned off).
 - Six open animations: Cascade, Spring, Sweep, Zoom, Fade or None.
 
 **With your Spotify account** (optional, see [below](#spotify-account-features))
@@ -90,7 +89,6 @@ Open them from the Extensions app, or run
 | Panel   | Scroll action   | Previous / next track, seek, or nothing                   |
 | Popup   | Cover color     | Tint the popup background with the cover art              |
 | Popup   | Opacity         | Background opacity of the popup                           |
-| Popup   | Blur            | Blur the windows behind the popup                         |
 | Popup   | Open animation  | How the popup and its contents appear                     |
 | Popup   | Genre and year  | Look them up on MusicBrainz when the player has none      |
 | Popup   | Open / close delay | How long to hover before the popup opens or closes     |

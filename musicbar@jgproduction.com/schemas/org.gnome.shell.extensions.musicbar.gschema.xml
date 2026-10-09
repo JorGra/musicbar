@@ -52,10 +52,6 @@
       <default>80</default>
       <summary>Popup background opacity in percent</summary>
     </key>
-    <key name="popup-blur" type="b">
-      <default>true</default>
-      <summary>Blur the windows behind the popup</summary>
-    </key>
     <key name="show-details" type="b">
       <default>true</default>
       <summary>Show genre and release year in the popup</summary>

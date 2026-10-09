@@ -77,7 +77,6 @@ export default class MusicBarPreferences extends ExtensionPreferences {
         page.add(popup);
         popup.add(switchRow(settings, 'tint-popup', 'Cover color', 'Tint the popup background with the cover art'));
         popup.add(spinRow(settings, 'popup-opacity', 'Opacity', 'Background opacity in percent', 30, 100, 5));
-        popup.add(switchRow(settings, 'popup-blur', 'Blur', 'Blur the windows behind the popup'));
         popup.add(comboRow(settings, 'open-animation', 'Open animation', 'How the popup and its contents appear', [
             ['cascade', 'Cascade'],
             ['spring', 'Spring'],
