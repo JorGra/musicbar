@@ -33,30 +33,55 @@ if (fade_right > 0.0)
 cogl_color_out *= alpha;
 `;
 
-/** Fades the left and right edges of an actor; widths are fractions of its width. */
-const EdgeFadeEffect = GObject.registerClass(
-class EdgeFadeEffect extends Shell.GLSLEffect {
-    _init() {
-        super._init();
-        this._leftLocation = this.get_uniform_location('fade_left');
-        this._rightLocation = this.get_uniform_location('fade_right');
-    }
+/**
+ * Fades the left and right edges of an actor; widths are fractions of its
+ * width. GNOME Shell 51 replaced Shell.GLSLEffect with snippet-based
+ * Clutter.ShaderEffects, so pick whichever this version has.
+ */
+const EdgeFadeEffect = Shell.GLSLEffect
+    ? GObject.registerClass(
+    class EdgeFadeEffect extends Shell.GLSLEffect {
+        _init() {
+            super._init();
+            this._leftLocation = this.get_uniform_location('fade_left');
+            this._rightLocation = this.get_uniform_location('fade_right');
+        }
 
-    vfunc_build_pipeline() {
-        this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT, FADE_DECLARATIONS, FADE_CODE, false);
-    }
+        vfunc_build_pipeline() {
+            this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT, FADE_DECLARATIONS, FADE_CODE, false);
+        }
 
-    setEdges(left, right) {
-        this.set_uniform_float(this._leftLocation, 1, [left]);
-        this.set_uniform_float(this._rightLocation, 1, [right]);
-        this.queue_repaint();
-    }
-});
+        setEdges(left, right) {
+            this.set_uniform_float(this._leftLocation, 1, [left]);
+            this.set_uniform_float(this._rightLocation, 1, [right]);
+            this.queue_repaint();
+        }
+    })
+    : GObject.registerClass(
+    class EdgeFadeEffect extends Clutter.ShaderEffect {
+        vfunc_get_static_snippet() {
+            return Cogl.Snippet.new(Cogl.SnippetHook.FRAGMENT, FADE_DECLARATIONS, FADE_CODE);
+        }
+
+        setEdges(left, right) {
+            this.set_uniform_value('fade_left', left);
+            this.set_uniform_value('fade_right', right);
+            this.queue_repaint();
+        }
+    });
+
+/** Whether moving text is welcome: animations on, no reduced motion (GNOME 51+). */
+function motionAllowed() {
+    const settings = St.Settings.get();
+    if (!settings.enable_animations)
+        return false;
+    return !St.ReducedMotion || settings.reduced_motion !== St.ReducedMotion.REDUCE;
+}
 
 /**
  * Drop-in for a single-line St.Label. Overflowing text loops from right to
  * left while the label is on screen and falls back to an ellipsis when
- * animations are turned off.
+ * animations are off or reduced motion is requested.
  */
 export const MarqueeLabel = GObject.registerClass(
 class MarqueeLabel extends St.Widget {
@@ -79,8 +104,10 @@ class MarqueeLabel extends St.Widget {
         this._overflow = false;
         this._updateLaterId = 0;
 
-        this._animationsId = St.Settings.get().connect('notify::enable-animations',
-            () => this.queue_relayout());
+        const settings = St.Settings.get();
+        this._settingsIds = ['enable-animations', 'reduced-motion']
+            .filter(name => GObject.Object.find_property.call(St.Settings, name))
+            .map(name => settings.connect(`notify::${name}`, () => this.queue_relayout()));
         this.connect('notify::mapped', () => this._queueUpdate());
         this.connect('destroy', () => this._onDestroy());
     }
@@ -114,7 +141,7 @@ class MarqueeLabel extends St.Widget {
         const [, textWidth] = this._label.get_preferred_width(-1);
         const [, height] = this._label.get_preferred_height(-1);
         const available = content.get_width();
-        const overflow = textWidth > available && St.Settings.get().enable_animations;
+        const overflow = textWidth > available && motionAllowed();
 
         // While scrolling the text gets its full width; otherwise it is
         // clamped to the available space and ellipsized.
@@ -189,6 +216,7 @@ class MarqueeLabel extends St.Widget {
     _onDestroy() {
         if (this._updateLaterId)
             global.compositor.get_laters().remove(this._updateLaterId);
-        St.Settings.get().disconnect(this._animationsId);
+        const settings = St.Settings.get();
+        this._settingsIds.forEach(id => settings.disconnect(id));
     }
 });

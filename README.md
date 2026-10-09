@@ -49,7 +49,7 @@ they are the one playing, unless **Spotify only** is switched on.
 
 ## Requirements
 
-GNOME Shell 50.
+GNOME Shell 50 or 51.
 
 ## Installation
 

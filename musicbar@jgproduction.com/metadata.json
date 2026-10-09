@@ -2,7 +2,7 @@
   "uuid": "musicbar@jgproduction.com",
   "name": "MusicBar",
   "description": "Compact media controls for the top bar that follow the colors of the current cover art. Works with Spotify and any MPRIS player.\n\n* Previous, play/pause and next in a small pill, with the song position drawn as a ring around it\n* Hover the pill for a popup with large cover art, title, artist, album, year and genre, a scrubber, shuffle, repeat and volume\n* Click the cover to bring the player to the front\n* Scroll over the pill to skip tracks or seek\n* Six open animations, adjustable opacity and tinting\n* Optional: like songs, add them to playlists and see Smart Shuffle with your own Spotify developer app\n\nNetwork access: cover art is downloaded from the URL the player provides. Year and genre are looked up on musicbrainz.org (artist, title and album are sent) when the player does not provide them; this can be turned off in the settings. Spotify account features only talk to the Spotify Web API after you connect your account.",
-  "shell-version": ["50"],
+  "shell-version": ["50", "51"],
   "settings-schema": "org.gnome.shell.extensions.musicbar",
   "url": "https://github.com/JorGra/musicbar",
   "version-name": "1.0"
