@@ -1,0 +1,16 @@
+{
+  "name": "musicbar",
+  "private": true,
+  "description": "Development tooling for the MusicBar GNOME Shell extension",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint musicbar@jgproduction.com"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0"
+  }
+}

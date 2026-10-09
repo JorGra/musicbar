@@ -2,7 +2,7 @@ UUID := musicbar@jgproduction.com
 SRC := $(UUID)
 DEST := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 
-.PHONY: install uninstall pack clean dev dev-prefs
+.PHONY: install uninstall pack lint clean dev dev-prefs
 
 install:
 	glib-compile-schemas $(SRC)/schemas
@@ -20,6 +20,9 @@ pack:
 	gnome-extensions pack --force --extra-source=art.js --extra-source=details.js --extra-source=indicator.js \
 		--extra-source=mpris.js --extra-source=popup.js --extra-source=spotify.js --extra-source=util.js --extra-source=icons \
 		--out-dir=build $(SRC)
+
+lint:
+	npm run --silent lint
 
 # Nested GNOME Shell window with the extension and your real players; no logout.
 dev:

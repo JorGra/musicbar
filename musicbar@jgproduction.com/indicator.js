@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The compact, fixed-width controls that live in the panel.
 
+import Cairo from 'cairo';
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -13,6 +14,8 @@ import {DEFAULT_PALETTE} from './art.js';
 import {addHoverScale} from './util.js';
 
 const SEEK_STEP_US = 5 * 1000 * 1000;
+// Minimum time between track skips, so one touchpad flick doesn't skip five songs.
+const SKIP_INTERVAL = 400;
 
 export const MusicBarIndicator = GObject.registerClass(
 class MusicBarIndicator extends PanelMenu.Button {
@@ -21,6 +24,11 @@ class MusicBarIndicator extends PanelMenu.Button {
         this._manager = manager;
         this._settings = settings;
         this._palette = DEFAULT_PALETTE;
+        this._progress = 0;
+        this._buttonSize = 0;
+        this._fitLaterId = 0;
+        this._scrollAccum = 0;
+        this._lastSkip = 0;
 
         this.add_style_class_name('musicbar-indicator');
 
@@ -48,7 +56,6 @@ class MusicBarIndicator extends PanelMenu.Button {
         row.add_child(this._nextButton);
 
         // Song position drawn as a ring tracing the pill's outline.
-        this._progress = 0;
         this._ring = new St.DrawingArea({
             style_class: 'musicbar-pill-ring',
             x_expand: true,
@@ -58,7 +65,6 @@ class MusicBarIndicator extends PanelMenu.Button {
         this._pill.insert_child_below(this._ring, row);
 
         this._pill.connect('scroll-event', (_a, event) => this._onScroll(event));
-        this._buttonSize = 0;
         row.connect('notify::height', () => this._fitButtons(row.height));
 
         this._settingsIds = [
@@ -110,7 +116,7 @@ class MusicBarIndicator extends PanelMenu.Button {
         if (!player || action === 'none')
             return Clutter.EVENT_PROPAGATE;
 
-        let dir = 0;
+        let dir;
         switch (event.get_scroll_direction()) {
         case Clutter.ScrollDirection.UP:
         case Clutter.ScrollDirection.RIGHT:
@@ -120,22 +126,20 @@ class MusicBarIndicator extends PanelMenu.Button {
         case Clutter.ScrollDirection.LEFT:
             dir = -1;
             break;
-        default:
-            // Smooth scrolling: act once per "notch" worth of delta.
-            {
-                const [dx, dy] = event.get_scroll_delta();
-                this._scrollAccum = (this._scrollAccum ?? 0) + (Math.abs(dy) > Math.abs(dx) ? -dy : dx);
-                if (Math.abs(this._scrollAccum) < 1)
-                    return Clutter.EVENT_STOP;
-                dir = Math.sign(this._scrollAccum);
-                this._scrollAccum = 0;
-            }
+        default: {
+            // Smooth scrolling: act once per notch worth of delta.
+            const [dx, dy] = event.get_scroll_delta();
+            this._scrollAccum += (Math.abs(dy) > Math.abs(dx) ? -dy : dx);
+            if (Math.abs(this._scrollAccum) < 1)
+                return Clutter.EVENT_STOP;
+            dir = Math.sign(this._scrollAccum);
+            this._scrollAccum = 0;
+        }
         }
 
         if (action === 'track') {
-            // Debounce so one flick of a touchpad doesn't skip five songs.
             const now = Date.now();
-            if (now - (this._lastSkip ?? 0) < 400)
+            if (now - this._lastSkip < SKIP_INTERVAL)
                 return Clutter.EVENT_STOP;
             this._lastSkip = now;
             if (dir > 0)
@@ -157,10 +161,6 @@ class MusicBarIndicator extends PanelMenu.Button {
         const tint = this._settings.get_boolean('tint-panel') && this._palette.tinted;
         // The ring is the pill's only outline, so it carries the tint.
         this._ring.set_style(tint ? `color: ${this._palette.accent};` : null);
-        if (tint)
-            this._pill.add_style_class_name('tinted');
-        else
-            this._pill.remove_style_class_name('tinted');
     }
 
     sync() {
@@ -219,7 +219,7 @@ class MusicBarIndicator extends PanelMenu.Button {
         const length = 2 * (x1 - x0) + 2 * Math.PI * r;
 
         cr.setLineWidth(lineWidth);
-        cr.setLineCap(0); // butt
+        cr.setLineCap(Cairo.LineCap.BUTT);
 
         path();
         cr.setSourceRGBA(trackColor.red / 255, trackColor.green / 255,

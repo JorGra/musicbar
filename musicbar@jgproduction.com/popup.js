@@ -104,7 +104,7 @@ class ControlsLayout extends Clutter.LayoutManager {
 export const MusicBarPopup = GObject.registerClass({
     Signals: {'drag-changed': {}, 'hover-changed': {}},
 }, class MusicBarPopup extends St.Widget {
-    _init(manager, {settings, art, spotify, details, iconsDir, openPreferences}) {
+    _init(manager, {settings, art, spotify, details, iconsDir}) {
         // An unstyled, non-reactive frame holding the shadow and the card.
         // St's own box-shadow renders as a hard rectangle under translucent
         // backgrounds, so the shadow is drawn by hand, outside the card only.
@@ -143,15 +143,38 @@ export const MusicBarPopup = GObject.registerClass({
         this._art = art;
         this._spotify = spotify;
         this._detailsLookup = details;
-        this._detailsKey = null;
         this._iconsDir = iconsDir;
-        this._openPreferences = openPreferences;
+        this._destroyed = false;
+        this.dragging = false;
+
+        this._isOpen = false;
+        this._anchor = null;
+        this._below = true;
         this._palette = DEFAULT_PALETTE;
+        this._accent = DEFAULT_PALETTE.accent;
+        this._app = null;
+
+        this._detailsKey = null;
+        this._detailsCancellable = null;
+        this._detailsText = '';
+
+        this._showRemaining = false;
+        this._updatingSlider = false;
+        this._seekId = 0;
+
+        this._volumeOpen = false;
+        this._volumeDragging = false;
+        this._updatingVolume = false;
+        this._unmutedVolume = 0.5;
+
         this._likeUri = null;
         this._liked = false;
-        this._isOpen = false;
-        this.dragging = false;
-        this._showRemaining = false;
+        this._smartShuffle = false;
+        this._smartSerial = 0;
+        this._lastShuffle = false;
+        this._sheetCancellable = null;
+        this._sheetAction = null;
+        this._toastId = 0;
 
         this._buildCover();
         this._buildInfo();
@@ -272,7 +295,6 @@ export const MusicBarPopup = GObject.registerClass({
         this._artist = label('musicbar-artist');
         // Album, year and genre share one quiet line.
         this._meta = label('musicbar-meta');
-        this._detailsText = '';
 
         // Spotify-only actions: like and add to playlist.
         this._actions = new St.BoxLayout({
@@ -405,7 +427,6 @@ export const MusicBarPopup = GObject.registerClass({
             () => this._setVolumeOpen(!this._volumeOpen));
 
         // Spotify's Smart Shuffle: the shuffle icon with a small sparkle.
-        this._smartShuffle = false;
         const shuffleIcon = this._shuffleButton.child;
         this._shuffleButton.child = new St.Widget({layout_manager: new Clutter.BinLayout()});
         this._shuffleButton.child.add_child(shuffleIcon);
@@ -431,7 +452,6 @@ export const MusicBarPopup = GObject.registerClass({
     }
 
     _buildVolume() {
-        this._volumeOpen = false;
         this._volumeRow = new St.BoxLayout({
             style_class: 'musicbar-volume',
             clip_to_allocation: true,
@@ -456,7 +476,7 @@ export const MusicBarPopup = GObject.registerClass({
                 this._unmutedVolume = volume;
                 player.setVolume(0);
             } else {
-                player.setVolume(this._unmutedVolume || 0.5);
+                player.setVolume(this._unmutedVolume);
             }
             this._syncVolume(player);
         });
@@ -468,6 +488,12 @@ export const MusicBarPopup = GObject.registerClass({
         this._volumeSlider.accessible_name = 'Volume';
         this._volumeSlider.x_expand = true;
         this._volumeSlider.y_align = Clutter.ActorAlign.CENTER;
+        this._volumeSlider.connect('drag-begin', () => {
+            this._volumeDragging = true;
+        });
+        this._volumeSlider.connect('drag-end', () => {
+            this._volumeDragging = false;
+        });
         this._volumeSlider.connect('notify::value', () => {
             if (this._updatingVolume)
                 return;
@@ -615,7 +641,7 @@ export const MusicBarPopup = GObject.registerClass({
         back.ease({
             opacity: 255,
             duration: COVER_FADE_TIME,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            mode: Mode.EASE_OUT_QUAD,
             onStopped: () => {
                 front.opacity = 0;
                 this._coverPlaceholder.hide();
@@ -650,7 +676,7 @@ export const MusicBarPopup = GObject.registerClass({
         this._syncToggles();
         this._syncSource(player);
         this._syncVolume(player);
-        this._syncSpotify(player);
+        this._syncSpotify();
         this.updateProgress();
     }
 
@@ -691,7 +717,7 @@ export const MusicBarPopup = GObject.registerClass({
             this._setVolumeOpen(false, false);
             return;
         }
-        if (!this._volumeSlider._dragging) {
+        if (!this._volumeDragging) {
             this._updatingVolume = true;
             this._volumeSlider.value = volume;
             this._updatingVolume = false;
@@ -826,7 +852,7 @@ export const MusicBarPopup = GObject.registerClass({
 
     /** Smart Shuffle only shows up in the Web API, so ask it when it may have changed. */
     async _refreshSmartShuffle() {
-        const serial = this._smartSerial = (this._smartSerial ?? 0) + 1;
+        const serial = ++this._smartSerial;
         const player = this._manager.active;
         let smart = false;
         if (player?.isSpotify && player.shuffle && this._spotify.isConnected &&
@@ -865,10 +891,6 @@ export const MusicBarPopup = GObject.registerClass({
         const uri = this._trackUri;
         if (!uri)
             return;
-        if (!this._spotify.isConnected) {
-            this._openSheet();
-            return;
-        }
         const liked = !this._liked;
         this._setLiked(liked);
         try {
@@ -887,7 +909,7 @@ export const MusicBarPopup = GObject.registerClass({
         this._sheet.ease({
             opacity: 255,
             duration: SHEET_FADE_TIME,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            mode: Mode.EASE_OUT_QUAD,
         });
         this._playlistButton.add_style_pseudo_class('checked');
         this._loadPlaylists(false);
@@ -901,7 +923,7 @@ export const MusicBarPopup = GObject.registerClass({
         this._sheet.ease({
             opacity: 0,
             duration: SHEET_FADE_TIME,
-            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+            mode: Mode.EASE_IN_QUAD,
             onStopped: isFinished => {
                 if (isFinished)
                     this._sheet.hide();
@@ -924,18 +946,6 @@ export const MusicBarPopup = GObject.registerClass({
     async _loadPlaylists(force) {
         this._sheetCancellable?.cancel();
         const cancellable = this._sheetCancellable = new Gio.Cancellable();
-
-        if (!this._spotify.isConnected) {
-            this._showSheetMessage('Connect your Spotify account to like songs and add them to playlists.', {
-                icon: 'system-users-symbolic',
-                button: 'Open Settings',
-                action: () => {
-                    this.close();
-                    this._openPreferences();
-                },
-            });
-            return;
-        }
 
         this._showSheetMessage('Loading playlists…');
         let playlists;
@@ -1044,13 +1054,13 @@ export const MusicBarPopup = GObject.registerClass({
         this._toast.text = text;
         this._toast.remove_all_transitions();
         this._toast.show();
-        this._toast.ease({opacity: 255, duration: 150, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+        this._toast.ease({opacity: 255, duration: 150, mode: Mode.EASE_OUT_QUAD});
         this._toastId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TOAST_TIME, () => {
             this._toastId = 0;
             this._toast.ease({
                 opacity: 0,
                 duration: 250,
-                mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                mode: Mode.EASE_IN_QUAD,
                 onStopped: isFinished => {
                     if (isFinished)
                         this._toast.hide();

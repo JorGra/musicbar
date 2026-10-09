@@ -8,7 +8,9 @@ import Soup from 'gi://Soup?version=3.0';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import {REDIRECT_PORT, REDIRECT_URI, SpotifyClient, buildAuthorizeUrl, createPkce} from './spotify.js';
+import {
+    REDIRECT_PORT, REDIRECT_URI, SpotifyClient, buildAuthorizeUrl, createPkce, createState,
+} from './spotify.js';
 
 const LOGIN_TIMEOUT = 5 * 60;
 const DONE_PAGE = `<!doctype html><meta charset="utf-8"><title>MusicBar</title>
@@ -128,19 +130,11 @@ export default class MusicBarPreferences extends ExtensionPreferences {
             new Gtk.UriLauncher({uri: 'https://developer.spotify.com/dashboard'}).launch(window, null, null));
         expander.add_row(dashboardRow);
 
-        const redirectRow = new Adw.ActionRow({title: 'Redirect URI', subtitle: REDIRECT_URI});
-        redirectRow.subtitle_selectable = true;
-        const copyButton = new Gtk.Button({
-            icon_name: 'edit-copy-symbolic',
-            valign: Gtk.Align.CENTER,
-            tooltip_text: 'Copy',
-            css_classes: ['flat'],
+        const redirectRow = new Adw.ActionRow({
+            title: 'Redirect URI',
+            subtitle: REDIRECT_URI,
+            subtitle_selectable: true,
         });
-        copyButton.connect('clicked', () => {
-            window.get_clipboard().set(REDIRECT_URI);
-            this._toast(window, 'Copied redirect URI');
-        });
-        redirectRow.add_suffix(copyButton);
         expander.add_row(redirectRow);
 
         const clientIdRow = new Adw.EntryRow({title: 'Client ID'});
@@ -193,13 +187,14 @@ export default class MusicBarPreferences extends ExtensionPreferences {
 
     _startLogin(window, client, clientId) {
         const {verifier, challenge} = createPkce();
-        const state = GLib.uuid_string_random();
+        const state = createState();
         const server = new Soup.Server();
 
         const finish = (message, title) => {
             message.set_status(200, null);
+            const html = DONE_PAGE.replace('%s', GLib.markup_escape_text(title, -1));
             message.set_response('text/html; charset=utf-8', Soup.MemoryUse.COPY,
-                new TextEncoder().encode(DONE_PAGE.replace('%s', title)));
+                new TextEncoder().encode(html));
         };
 
         server.add_handler('/callback', (_server, message) => {

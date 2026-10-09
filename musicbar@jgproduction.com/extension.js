@@ -37,7 +37,6 @@ export default class MusicBarExtension extends Extension {
             spotify: this._spotify,
             details: this._details,
             iconsDir: GLib.build_filenamev([this.path, 'icons']),
-            openPreferences: () => this.openPreferences(),
         });
         Main.layoutManager.addTopChrome(this._popup);
         this._popup.connect('hover-changed', () => this._syncHover());

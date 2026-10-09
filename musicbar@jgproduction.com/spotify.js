@@ -2,6 +2,7 @@
 // Minimal Spotify Web API client (Authorization Code + PKCE).
 // Used by both the shell (playlists, likes) and the prefs window (login).
 
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Soup from 'gi://Soup?version=3.0';
 
@@ -46,12 +47,24 @@ function hexToBytes(hex) {
     return out;
 }
 
+/** Bytes from the kernel's CSPRNG; GLib's own random functions are not secure. */
+function secureRandom(length) {
+    const stream = Gio.File.new_for_path('/dev/urandom').read(null);
+    try {
+        return stream.read_bytes(length, null).toArray();
+    } finally {
+        stream.close(null);
+    }
+}
+
+/** Random string for the OAuth `state` parameter. */
+export function createState() {
+    return base64Url(secureRandom(24));
+}
+
 /** Create a PKCE verifier/challenge pair. */
 export function createPkce() {
-    const random = new Uint8Array(48);
-    for (let i = 0; i < random.length; i++)
-        random[i] = GLib.random_int_range(0, 256);
-    const verifier = base64Url(random);
+    const verifier = base64Url(secureRandom(48));
     const digest = GLib.compute_checksum_for_string(GLib.ChecksumType.SHA256, verifier, -1);
     return {verifier, challenge: base64Url(hexToBytes(digest))};
 }
@@ -85,6 +98,9 @@ export class SpotifyClient {
         this._session = new Soup.Session({timeout: 15});
         this._accessToken = null;
         this._accessExpiry = 0;
+        this._refreshing = null;
+        this._savingToken = false;
+        this._noPlaybackScope = false;
         this._playlists = null;
         this._playlistsTime = 0;
         this._me = null;
@@ -145,10 +161,17 @@ export class SpotifyClient {
         });
     }
 
-    async _token() {
+    _token() {
         if (this._accessToken && Date.now() < this._accessExpiry)
-            return this._accessToken;
+            return Promise.resolve(this._accessToken);
+        // Refresh tokens rotate, so parallel requests must share one refresh.
+        this._refreshing ??= this._refresh().finally(() => {
+            this._refreshing = null;
+        });
+        return this._refreshing;
+    }
 
+    async _refresh() {
         const clientId = this._settings.get_string('spotify-client-id');
         const refreshToken = this._settings.get_string('spotify-refresh-token');
         if (!clientId || !refreshToken)

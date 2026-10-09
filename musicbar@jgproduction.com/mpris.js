@@ -56,9 +56,6 @@ const PlayerIfaceXml = `
   </interface>
 </node>`;
 
-const RootProxy = Gio.DBusProxy.makeProxyWrapper(RootIfaceXml);
-const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(PlayerIfaceXml);
-
 function isCancelled(e) {
     return e instanceof GLib.Error &&
         e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED);
@@ -72,10 +69,14 @@ function emptyTrack() {
 }
 
 export class Player extends Signals.EventEmitter {
-    constructor(busName) {
+    constructor(busName, proxies) {
         super();
         this.busName = busName;
         this.track = emptyTrack();
+        this.ready = false;
+        this._proxies = proxies;
+        this._root = null;
+        this._proxy = null;
         this._cancellable = new Gio.Cancellable();
         this._position = 0;
         this._positionTime = GLib.get_monotonic_time();
@@ -88,8 +89,8 @@ export class Player extends Signals.EventEmitter {
     async init() {
         const bus = Gio.DBus.session;
         [this._root, this._proxy] = await Promise.all([
-            RootProxy.newAsync(bus, this.busName, MPRIS_PATH, this._cancellable),
-            PlayerProxy.newAsync(bus, this.busName, MPRIS_PATH, this._cancellable),
+            this._proxies.root.newAsync(bus, this.busName, MPRIS_PATH, this._cancellable),
+            this._proxies.player.newAsync(bus, this.busName, MPRIS_PATH, this._cancellable),
         ]);
 
         this._propsId = this._proxy.connect('g-properties-changed',
@@ -259,7 +260,7 @@ export class Player extends Signals.EventEmitter {
                 try {
                     const [value] = conn.call_finish(res).deepUnpack();
                     this._setPosition(Number(value.unpack()));
-                } catch (e) {
+                } catch {
                     // Some players do not implement Position.
                 }
             });
@@ -287,7 +288,7 @@ export class Player extends Signals.EventEmitter {
                         return;
                     this._proxy.set_cached_property('Volume', value);
                     this.emit('changed');
-                } catch (e) {
+                } catch {
                     // Volume is optional.
                 }
             });
@@ -359,6 +360,12 @@ export class PlayerManager extends Signals.EventEmitter {
         super();
         this._settings = settings;
         this._players = new Map();
+        this._proxies = {
+            root: Gio.DBusProxy.makeProxyWrapper(RootIfaceXml),
+            player: Gio.DBusProxy.makeProxyWrapper(PlayerIfaceXml),
+        };
+        this._nameOwnerId = 0;
+        this._cancellable = null;
         this.active = null;
 
         this._settingsId = settings.connect('changed::spotify-only', () => this._choose());
@@ -409,7 +416,7 @@ export class PlayerManager extends Signals.EventEmitter {
         if (this._players.has(busName) || IGNORED_PLAYERS.some(re => re.test(busName)))
             return;
 
-        const player = new Player(busName);
+        const player = new Player(busName, this._proxies);
         this._players.set(busName, player);
         try {
             await player.init();

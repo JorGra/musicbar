@@ -7,6 +7,7 @@ import GdkPixbuf from 'gi://GdkPixbuf';
 import Soup from 'gi://Soup?version=3.0';
 
 const MAX_CACHED_FILES = 200;
+const MAX_CACHED_PALETTES = 100;
 
 // ---- color helpers -------------------------------------------------------
 
@@ -115,14 +116,13 @@ export function makePalette(color) {
     if (!color)
         return DEFAULT_PALETTE;
 
-    const [h, s, l] = rgbToHsl(color.r, color.g, color.b);
+    const [h, s] = rgbToHsl(color.r, color.g, color.b);
     const grey = s < 0.12;
     const sat = Math.min(s, 0.8);
     const accentSat = grey ? sat : Math.max(sat, 0.5);
 
     return {
         tinted: true,
-        pill: css(h, sat * 0.85, Math.clamp(l, 0.3, 0.42)),
         bgStart: rgb(h, sat * 0.6, 0.25),
         bgEnd: rgb(h, sat * 0.5, 0.09),
         accent: css(h, accentSat, grey ? 0.9 : 0.7),
@@ -133,7 +133,6 @@ export function makePalette(color) {
 
 export const DEFAULT_PALETTE = {
     tinted: false,
-    pill: 'rgba(255,255,255,0.1)',
     bgStart: [43, 47, 54],
     bgEnd: [17, 19, 22],
     accent: '#1ed760',
@@ -174,13 +173,13 @@ export class ArtLoader {
         if (!palette) {
             try {
                 palette = makePalette(extractColor(path));
-            } catch (e) {
+            } catch {
                 // Broken download: drop it so it is fetched again next time.
                 if (path.startsWith(this._dir))
                     GLib.unlink(path);
                 return null;
             }
-            if (this._palettes.size > 100)
+            if (this._palettes.size > MAX_CACHED_PALETTES)
                 this._palettes.clear();
             this._palettes.set(path, palette);
         }
@@ -211,6 +210,10 @@ export class ArtLoader {
 
     _download(url, path, cancellable) {
         return new Promise((resolve, reject) => {
+            if (!this._session) {
+                reject(new Error('Cover loader was destroyed'));
+                return;
+            }
             const message = Soup.Message.new('GET', url);
             if (!message) {
                 reject(new Error(`Invalid URL ${url}`));

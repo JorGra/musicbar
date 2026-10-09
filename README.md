@@ -145,6 +145,7 @@ MusicBar doesn't collect or send any usage data. It only goes online for:
 make dev        # nested GNOME Shell window running MusicBar from this folder
 make dev-prefs  # open the settings inside that window
 make pack       # build the extensions.gnome.org zip in build/
+make lint       # ESLint (run `npm install` once first)
 ```
 
 `make dev` uses GNOME's devkit (`gnome-shell --devkit`). The nested shell has
