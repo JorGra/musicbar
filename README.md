@@ -4,6 +4,10 @@ Compact media controls for the GNOME Shell top bar that take on the colors of
 the current cover art. Works with Spotify and any other MPRIS player.
 
 <p align="center">
+  <img src="screenshots/demo.gif" alt="Hovering the controls opens the popup with the cascade animation, then the volume slider folds out" width="420">
+</p>
+
+<p align="center">
   <img src="screenshots/popup.png" alt="MusicBar popup with cover art, track info and playback controls" width="420">
   <img src="screenshots/volume.png" alt="MusicBar popup with the volume slider folded out" width="420">
 </p>
