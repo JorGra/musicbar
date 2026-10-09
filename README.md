@@ -27,7 +27,8 @@ the current cover art. Works with Spotify and any other MPRIS player.
 
 - Large cover art that cross-fades between tracks. Click it to bring the player
   to the front.
-- Title, artist and one quiet line with album, year and genre.
+- Title, artist and one quiet line with album, year and genre. Text that
+  doesn't fit scrolls.
 - A scrubber with elapsed and total time; click the total to show the remaining
   time instead.
 - Shuffle, previous, play/pause, next and repeat (off / playlist / track).

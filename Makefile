@@ -17,7 +17,7 @@ uninstall:
 
 pack:
 	mkdir -p build
-	gnome-extensions pack --force --extra-source=art.js --extra-source=details.js --extra-source=indicator.js \
+	gnome-extensions pack --force --extra-source=art.js --extra-source=details.js --extra-source=indicator.js --extra-source=marquee.js \
 		--extra-source=mpris.js --extra-source=popup.js --extra-source=spotify.js --extra-source=util.js --extra-source=icons \
 		--out-dir=build $(SRC)
 

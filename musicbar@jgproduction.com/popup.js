@@ -14,6 +14,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
 
 import {DEFAULT_PALETTE, rgba} from './art.js';
+import {MarqueeLabel} from './marquee.js';
 import {trackUriFromMpris} from './spotify.js';
 import {addHoverScale, formatTime} from './util.js';
 
@@ -285,9 +286,9 @@ export const MusicBarPopup = GObject.registerClass({
         });
         info.add_child(text);
 
+        // Long titles and album lines scroll instead of being cut off.
         const label = styleClass => {
-            const l = new St.Label({style_class: styleClass, x_expand: true});
-            l.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+            const l = new MarqueeLabel({style_class: styleClass, x_expand: true});
             text.add_child(l);
             return l;
         };

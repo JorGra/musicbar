@@ -22,6 +22,12 @@ if [ "${1:-}" != --inner ]; then
     # build/devkit instead of ~/.config/dconf.
     export HOST_BUS=$DBUS_SESSION_BUS_ADDRESS
     export XDG_CONFIG_HOME=$DEV/config XDG_DATA_HOME=$DEV/data XDG_CACHE_HOME=$DEV/cache
+    # Keep the nested session quiet: it can't reach the host's accessibility
+    # bus, gvfs mounts or X server, and only logs warnings trying to. Set here
+    # so services D-Bus starts in the nested session inherit it too.
+    export NO_AT_BRIDGE=1 GTK_A11Y=none
+    export GIO_USE_VFS=local GIO_USE_VOLUME_MONITOR=unix GVFS_DISABLE_FUSE=1
+    unset DISPLAY XAUTHORITY
     exec dbus-run-session -- "$0" --inner
 fi
 
@@ -31,6 +37,17 @@ gsettings set org.gnome.shell enabled-extensions "['$UUID']"
 gsettings set org.gnome.shell disable-user-extensions false
 gsettings set org.gnome.shell welcome-dialog-last-shown-version '999'
 
+# The devkit's terminal button defaults to Ptyxis; use whichever terminal exists.
+LAUNCHERS="@a(sss) []"
+for app in org.gnome.Ptyxis org.gnome.Console; do
+    if [ -n "$(find /usr/share/applications /var/lib/flatpak/exports/share/applications \
+        -maxdepth 1 -name "$app.desktop" 2>/dev/null)" ]; then
+        LAUNCHERS="[('desktop', '$app', 'new-window')]"
+        break
+    fi
+done
+gsettings set org.gnome.mutter.devkit launchers "$LAUNCHERS"
+
 python3 "$ROOT/tools/mpris-relay.py" &
 RELAY=$!
 trap 'kill $RELAY 2>/dev/null' EXIT
@@ -38,4 +55,4 @@ trap 'kill $RELAY 2>/dev/null' EXIT
 # Lets `make dev-prefs` open the settings inside the nested shell.
 echo "$DBUS_SESSION_BUS_ADDRESS" > "$DEV/bus"
 
-MUTTER_DEBUG_DUMMY_MODE_SPECS=$SIZE gnome-shell --devkit --wayland
+MUTTER_DEBUG_DUMMY_MODE_SPECS=$SIZE gnome-shell --devkit --wayland --wayland-display musicbar-devkit
